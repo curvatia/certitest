@@ -2,7 +2,7 @@ import './style.css'
 import { BrowserProvider, Contract, isAddress } from 'ethers'
 
 const SEPOLIA_CHAIN_ID = 11155111n
-const CONTRACT_ADDRESS = import.meta.env.VITE_CERTITEST_ADDRESS ?? ''
+const CONTRACT_ADDRESS = import.meta.env.VITE_CERTITEST_ADDRESS || '0x49bA0f1377B737E32374c6936539434f07Bd025D'
 const CERTIFICATE_ABI = [
   'function issuers(address) view returns (bool)',
   'function issueCertificate(address recipient, string metadataURI) returns (uint256)',
