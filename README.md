@@ -1,22 +1,23 @@
-# Plantilla de Desarrollo Web3 EVM en GitHub Codespaces
+# CertiTest
 
-Pila completa con Foundry (`forge`, `cast`, `anvil`), Node 20, Vite y Ethers v6, lista para ejecutarse en GitHub Codespaces. Válida para cualquier red compatible con la EVM.
+Agencia de certificación digital que emite certificados como NFT multimedia ERC-721 en Ethereum Sepolia. Las imágenes y metadatos se guardan en IPFS; el NFT conserva el CID de los metadatos y la emisión queda verificable en la cadena. Slogan: **pon certitest en tu vida**.
+
+La agencia necesita una wallet con Sepolia ETH para pagar gas y firmar la emisión. La clave privada nunca se introduce en el frontend: solo se usa localmente para desplegar el contrato. La API de almacenamiento usa un JWT de Pinata configurado en el servidor.
 
 ---
 
 ## Configuración Inicial
 
-1. **Use this template** → **Create a new repository**.
-2. GitHub → **Settings** → **Codespaces** → **New repository secret**, y añade:
-   - `RPC_URL`: URL RPC de la red que vayas a utilizar (testnet, L2 o nodo local).
-   - `PRIVATE_KEY`: clave privada de una *burner wallet* con prefijo `0x` (**nunca una clave con fondos reales**).
-3. **Code** → **Codespaces** → **Create codespace on master**.
+1. Copia `.env.example` a `.env` en la raíz del proyecto.
+2. Configura `RPC_URL` (RPC de Sepolia), `PRIVATE_KEY` (wallet de despliegue de prueba) y `PINATA_JWT` (JWT del servidor Pinata).
+3. Asegúrate de que la wallet de despliegue tenga Sepolia ETH para pagar el gas.
+4. Inicializa las dependencias Solidity con `git submodule update --init --recursive`.
 
 ---
 
 ## Configuración de Redes en Foundry
 
-Define alias de red en `contracts/foundry.toml` para no escribir URLs largas:
+Foundry usa el alias `sepolia`, definido en `contracts/foundry.toml` y conectado a `RPC_URL`:
 
 ```toml
 [profile.default]
@@ -24,16 +25,8 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
-# Alias de redes EVM
 [rpc_endpoints]
-local = "http://127.0.0.1:8545"
-red = "${RPC_URL}"
-
-# Ejemplos:
-# sepolia = "https://eth-sepolia.g.alchemy.com/v2/${API_KEY}"
-# base = "https://mainnet.base.org"
-# arbitrum = "https://arb1.arbitrum.io/rpc"
-# polygon = "https://polygon-rpc.com"
+sepolia = "${RPC_URL}"
 ```
 
 ---
@@ -45,47 +38,38 @@ red = "${RPC_URL}"
 ```bash
 cd contracts
 
-# Compilar y probar
+# Cargar variables locales sin pasar la clave en argumentos del proceso
+set -a
+source ../.env
+set +a
+
+# Compilar, probar y desplegar
 forge build
 forge test
-
-# Desplegar y verificar en Sourcify
-forge create src/TuContrato.sol:TuContrato \
-  --rpc-url red \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  --verify \
-  --verifier sourcify
-
-# Desplegar mediante script (contrato Desplegar en script/Desplegar.s.sol)
-forge script script/Desplegar.s.sol:Desplegar --rpc-url red --broadcast
+forge script script/DeployCertiTest.s.sol:DeployCertiTest --rpc-url sepolia --broadcast
 ```
 
-> **Aviso de seguridad:** con `--private-key $PRIVATE_KEY`, el shell expande la variable y la clave queda visible en los argumentos del proceso (`ps`). Es aceptable solo con una *burner wallet*.
-
-<!--
-Versión securizada (keystore cifrado, la clave nunca aparece en argumentos):
-
-  cast wallet import deployer --interactive
-  forge create src/TuContrato.sol:TuContrato \
-    --rpc-url red \
-    --account deployer \
-    --broadcast \
-    --verify \
-    --verifier sourcify
--->
+El deployer queda autorizado como emisor inicial. Para autorizar otra wallet, llama `setIssuer(direccion, true)` desde la cuenta propietaria del contrato. Cada emisión ejecuta una transacción y consume gas de Sepolia.
 
 ### Frontend (`frontend/`, puerto 5173)
 
+El contrato ya está desplegado en Sepolia en `0x49bA0f1377B737E32374c6936539434f07Bd025D` (transacción `0x160ac42be91566c39506fe43105f4490d94a1d3b6d2dd08426ac44abdf7d6290`). Copia `frontend/.env.example` a `frontend/.env`; ya incluye esa dirección pública. El servidor API y Vite se ejecutan en terminales separadas:
+
 ```bash
+# Terminal 1: API de Pinata/IPFS
+cd backend
+npm start
+```
+
+```bash
+# Terminal 2: interfaz
 cd frontend
+cp .env.example .env
+# Edita .env y asigna VITE_CERTITEST_ADDRESS
 npm run dev -- --host
 ```
 
-> **Otro framework:** para Svelte, React o Vue en lugar de JavaScript puro, edita `.devcontainer/post-create.sh`:
-> ```bash
-> [ -d frontend ] || npm create -y vite@latest frontend -- --template svelte --no-interactive
-> ```
+En la interfaz, conecta MetaMask en Sepolia, selecciona una dirección destinataria, completa el nombre y carga una imagen PNG/JPG/WEBP de hasta 5 MB. El backend sube imagen y JSON de metadatos a IPFS; luego la wallet emisora firma el mint. La API no arranca subidas si falta `PINATA_JWT`.
 
 ---
 
@@ -93,14 +77,11 @@ npm run dev -- --host
 
 ```text
 .devcontainer/       Contenedor y configuración de Codespaces
-contracts/           Proyecto Foundry
-  ├── src/           Solidity (.sol)
-  ├── test/          Tests (.t.sol)
-  ├── script/        Scripts de despliegue (.s.sol)
-  └── foundry.toml   Compilador, redes y verificadores
-frontend/            Vite + Vanilla JS + Ethers v6
-.env.example         Variables requeridas (configúralas como secrets en GitHub)
-README.md            Documentación
+backend/             API Node para subir imagen y metadatos a Pinata
+contracts/           ERC-721, pruebas y script de despliegue Foundry
+frontend/            Vite + JavaScript + Ethers v6
+.env.example         RPC_URL, PRIVATE_KEY y PINATA_JWT (solo servidor)
+frontend/.env.example VITE_CERTITEST_ADDRESS (dirección pública del contrato)
 ```
 
 ---
