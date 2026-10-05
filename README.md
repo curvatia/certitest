@@ -71,6 +71,12 @@ npm run dev -- --host
 
 En la interfaz, conecta MetaMask en Sepolia, selecciona una dirección destinataria, completa el nombre y carga una imagen PNG/JPG/WEBP de hasta 5 MB. El backend sube imagen y JSON de metadatos a IPFS; luego la wallet emisora firma el mint. La API no arranca subidas si falta `PINATA_JWT`.
 
+### Publicar la API para GitHub Pages
+
+GitHub Pages solo sirve archivos estáticos, así que no puede atender `/api/upload/*`. Despliega el servicio desde `render.yaml` en Render; al crear el servicio, configura `PINATA_JWT` como secreto. Render configurará `FRONTEND_ORIGINS` para permitir `https://curvatia.github.io`.
+
+Después, en GitHub abre **Settings → Secrets and variables → Actions → Variables**, crea `VITE_API_BASE_URL` con la URL base que Render asignó al backend (sin `/api`) y vuelve a ejecutar el workflow **Deploy Pages**. Para desarrollo local, deja esa variable vacía: Vite usa el proxy local hacia `localhost:3001`.
+
 ---
 
 ## Estructura del Repositorio

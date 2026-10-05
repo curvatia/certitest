@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: certitest-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: PINATA_JWT
+        sync: false
+      - key: FRONTEND_ORIGINS
+        value: https://curvatia.github.io

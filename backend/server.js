@@ -4,6 +4,10 @@ const port = Number(process.env.PORT || 3001)
 const maxImageBytes = 5 * 1024 * 1024
 const maxMetadataBytes = 32 * 1024
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const allowedOrigins = new Set((process.env.FRONTEND_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean))
 
 class ApiError extends Error {
   constructor(status, message) {
@@ -103,6 +107,20 @@ async function handleRequest(request, response) {
 }
 
 const server = createServer((request, response) => {
+  const origin = request.headers.origin
+  if (origin && allowedOrigins.has(origin)) {
+    response.setHeader('Access-Control-Allow-Origin', origin)
+    response.setHeader('Vary', 'Origin')
+    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name')
+  }
+
+  if (request.method === 'OPTIONS') {
+    if (origin && !allowedOrigins.has(origin)) return sendJson(response, 403, { error: 'Origen no autorizado.' })
+    response.writeHead(204)
+    return response.end()
+  }
+
   handleRequest(request, response).catch((error) => {
     if (!response.headersSent) sendJson(response, error.status || 500, { error: error.status ? error.message : 'Error interno del servidor.' })
     else response.destroy()
@@ -110,6 +128,6 @@ const server = createServer((request, response) => {
   })
 })
 
-server.listen(port, process.env.HOST || '127.0.0.1', () => {
+server.listen(port, process.env.HOST || '0.0.0.0', () => {
   console.log(`CertiTest API escuchando en http://127.0.0.1:${port}`)
 })

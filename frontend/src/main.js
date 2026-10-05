@@ -3,6 +3,7 @@ import { BrowserProvider, Contract, isAddress } from 'ethers'
 
 const SEPOLIA_CHAIN_ID = 11155111n
 const CONTRACT_ADDRESS = import.meta.env.VITE_CERTITEST_ADDRESS || '0x49bA0f1377B737E32374c6936539434f07Bd025D'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const CERTIFICATE_ABI = [
   'function issuers(address) view returns (bool)',
   'function issueCertificate(address recipient, string metadataURI) returns (uint256)',
@@ -95,6 +96,13 @@ function shortAddress(address) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
+async function readApiResponse(response) {
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error(`La API no respondió JSON (HTTP ${response.status}). Configura VITE_API_BASE_URL con la URL del backend.`)
+  }
+  return response.json()
+}
+
 async function connectWallet() {
   if (!window.ethereum) throw new Error('Instala MetaMask para conectar tu wallet.')
 
@@ -162,20 +170,20 @@ document.querySelector('#issue-form').addEventListener('submit', async (event) =
   issueButton.disabled = true
   issueButton.querySelector('span').textContent = 'Guardando certificado…'
   try {
-    const imageResponse = await fetch('/api/upload/file', {
+    const imageResponse = await fetch(`${API_BASE_URL}/api/upload/file`, {
       method: 'POST',
       headers: { 'Content-Type': file.type, 'X-File-Name': encodeURIComponent(file.name) },
       body: file,
     })
-    const imageResult = await imageResponse.json()
+    const imageResult = await readApiResponse(imageResponse)
     if (!imageResponse.ok) throw new Error(imageResult.error || 'No se pudo guardar la imagen en IPFS.')
 
-    const metadataResponse = await fetch('/api/upload/metadata', {
+    const metadataResponse = await fetch(`${API_BASE_URL}/api/upload/metadata`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: title, description, image: imageResult.uri }),
     })
-    const metadataResult = await metadataResponse.json()
+    const metadataResult = await readApiResponse(metadataResponse)
     if (!metadataResponse.ok) throw new Error(metadataResult.error || 'No se pudieron guardar los metadatos.')
 
     issueButton.querySelector('span').textContent = 'Confirma la emisión en tu wallet…'
