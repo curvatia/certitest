@@ -13,7 +13,16 @@ if [ ! -d contracts/lib/forge-std/src ]; then
 fi
 
 [ -d contracts ] || forge init contracts --no-git
-[ -d frontend ]  || { npm create -y vite@latest frontend -- --template vanilla --no-interactive && (cd frontend && npm i && npm i ethers@^6); }
+if [ ! -d frontend ]; then
+	npm create -y vite@latest frontend -- --template vanilla --no-interactive
+fi
+
+(
+	cd frontend
+	npm install
+	npm install --save-dev vite@^8.3.0
+	npm install ethers@^6
+)
 
 cat > contracts/foundry.toml <<'TOML'
 [profile.default]
