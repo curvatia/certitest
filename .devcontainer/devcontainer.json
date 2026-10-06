@@ -9,7 +9,8 @@
   },
   "secrets": {
     "RPC_URL": { "description": "Alchemy/Infura RPC URL" },
-    "PRIVATE_KEY": { "description": "Llave privada de wallet" }
+    "PRIVATE_KEY": { "description": "Llave privada de wallet de despliegue Sepolia" },
+    "PINATA_JWT": { "description": "JWT de Pinata para cargas IPFS del backend" }
   },
   "customizations": {
     "vscode": {
